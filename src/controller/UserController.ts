@@ -1,53 +1,67 @@
 import {getRepository} from "typeorm";
-import {NextFunction, Request, Response} from "express";
-import {User} from "../entity/User";
-import { ClientResponse } from "http";
+import {Request, Response} from "express";
+import * as jwt from "jsonwebtoken";
+import {Users} from "../entity/User";
 
 export class UserController {
-
-    private userRepository = getRepository(User);
-
-    async all(request: Request, response: Response, next: NextFunction) {
-        return this.userRepository.find();
+    static getAllUsers = async (req: Request, res: Response) => {
+        const userRepository = getRepository(Users)
+        const users = await userRepository.find();
+        res.json(users)
     }
+    // async one(req: Request, res: Response, next: NextFunction) {
+    //     return this.userRepository.findOne(req.params.id);
+    // }
 
-    async one(request: Request, response: Response, next: NextFunction) {
-        return this.userRepository.findOne(request.params.id);
-    }
+    static createUser = async (req: Request, res: Response) => {
+        const userRepository = getRepository(Users)
+        const userFromReq = req.body
+        const user = await userRepository.findOne({username: userFromReq.username })
 
-    async createUser(request: Request, response: Response, next: NextFunction) {
-        const userFromReq = request.body
-        const user = await this.userRepository.findOne({username: userFromReq.username })
         if (user) {
-            return "There is already a user exist with that username"
+            res.json('There is already a user exist with that username')
         }
         else {
-            const user = new User()
+            const user = new Users()
             user.username = userFromReq.username
             user.pwd = userFromReq.pwd
-            return this.userRepository.save(user);
+            await userRepository.insert({
+                username: user.username,
+                pwd: user.pwd
+            })
+
+            res.json('Your account is successfully registered')
         }
     }
-    async logIn(request: Request, response: Response, next: NextFunction) {
-        const userFromReq = request.body
-        const user = await this.userRepository.findOne({username: userFromReq.username, pwd: userFromReq.pwd})
+    static signIn = async (req: Request, res: Response) => {
+        const userRepository = getRepository(Users)
+        const userFromReq = req.body
+        const user = await userRepository.findOne({username: userFromReq.username, pwd: userFromReq.pwd})
         if (!user) {
-            return "No user match your username and password"
+            res.json("No user match your username and password")
         }
         else {
-            return user
+            const token = jwt.sign(
+                { username: user.username },
+                process.env.jwtSecret,
+                { expiresIn: "1h" }
+            );
+
+            //Send the jwt in the response
+            res.send(token);
         }
     }
-    async remove(request: Request, response: Response, next: NextFunction) {
-        let userToRemove = await this.userRepository.findOne(request.params.id);
-        await this.userRepository.remove(userToRemove);
-    }
+    // async remove(req: Request, res: Response, next: NextFunction) {
+    //     let userToRemove = await this.userRepository.findOne(req.params.id);
+    //     await this.userRepository.remove(userToRemove);
+    // }
 
-    async removeAll(request: Request, response: Response, next: NextFunction) {
-        let usersToRemove = await this.userRepository.find();
+    static removeAll = async (req: Request, res: Response) => {
+        const userRepository = getRepository(Users)
+        let usersToRemove = await userRepository.find();
         usersToRemove.map(async user => {
-            await this.userRepository.remove(user);
+            await userRepository.remove(user);
         })
-        return 'OK!'
+        res.json("User's data cleared")
     }
 }
