@@ -2,8 +2,7 @@
 
 Steps to run this project:
 1. Copy the query in `CreateDB.txt` and execute the query in your MySQL.
-2. Setup your database settings inside `ormconfig.json` file
-For example:
+2. Setup your database settings inside `ormconfig.json` file. For example:
 ```bash
     "type": "mysql",
     "host": "localhost",
