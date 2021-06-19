@@ -9,7 +9,6 @@ export class TaskController {
     static getAllTasks = async (req: Request, res: Response) => {
         const taskRepository = getRepository(Tasks)
         const tasks = await taskRepository.find();
-
         res.json(tasks)
     }
     static getTaskById = async (req: Request, res: Response) => {
@@ -58,63 +57,86 @@ export class TaskController {
             return
         }
     }
-    static addTask = async (req: Request, res: Response) => {
-        const taskRepository = getRepository(Tasks)
-        const userRepository = getRepository(Users)
-        const taskFromReq = req.body
+    static addTask = (route: String) => {
+        return async (req: Request, res: Response) => {
+            const taskRepository = getRepository(Tasks)
+            const userRepository = getRepository(Users)
+            const taskFromReq = req.body
 
-        const token = <string>req.headers["token"];
-        let jwtPayload;
-        jwtPayload = <any>jwt.verify(token, process.env.jwtSecret);
+            const token = <string>req.headers["token"];
+            let jwtPayload;
+            jwtPayload = <any>jwt.verify(token, process.env.jwtSecret);
+            if (route === 'assign-to-do') {
+                const userAssign = await userRepository.findOne({id: taskFromReq.userId})
+                if (!userAssign) {
+                    res.json("You are assigning task to nobody")
+                    return
+                }
+            }
+            const userAssign = await userRepository.findOne({username: jwtPayload.username});
+            if (userAssign) {
+                if (userAssign.id === req.body.userId && route === 'assign-to-do') {
+                    res.json("You can't assign task to yourself")
+                    return
+                }
+                if (taskFromReq.taskStatus !== 'NEW' && taskFromReq.taskStatus !== 'COMPLETE') {
+                    res.json('Wrong task status!')
+                    return
+                }
 
-        const userAssign = await userRepository.findOne({username: jwtPayload.username});
-        if (userAssign) {
-            if (userAssign.id === req.body.userId) {
-                res.json("You can't assign task to yourself")
+                //YYYY-MM-DD HH-MM-SS
+                var dateFromReq = new Date(taskFromReq.expireDate);
+                const dateFormat = "YYYY-MM-DD HH:mm:ss"
+                let expireDate = moment(dateFromReq).format(dateFormat);
+                let createdDate = moment(new Date()).format(dateFormat);
+                if (expireDate === 'Invalid date') {
+                    res.json("Wrong date format!")
+                    return
+                }
+
+                const task = new Tasks()
+                task.taskName = taskFromReq.taskName
+                task.taskDescription = taskFromReq.taskDescription
+                if (route === 'add-to-do') {
+                    task.userId = userAssign.id
+                }
+                else if (taskFromReq.userId && taskFromReq.userId !== userAssign.id) {
+                    task.userId = taskFromReq.userId
+                }
+                else {
+                    console.log('route ', route)
+                    res.json("Some error!")
+                    return
+                }
+                task.expireDate = expireDate;
+                task.taskStatus = taskFromReq.taskStatus;
+                task.createdTime = createdDate;
+                task.updatedTime = createdDate;
+
+                await taskRepository.insert(task)
+                res.json(task)
                 return
             }
-            if (taskFromReq.taskStatus !== 'NEW' && taskFromReq.taskStatus !== 'COMPLETE') {
-                res.json('Wrong task status!')
-                return
+            else {
+                res.json("Can't find your account")
             }
-
-            //YYYY-MM-DD HH-MM-SS
-            var dateFromReq = new Date(taskFromReq.expireDate);
-            const dateFormat = "YYYY-MM-DD HH:mm:ss"
-            let expireDate = moment(dateFromReq).format(dateFormat);
-            let createdDate = moment(new Date()).format(dateFormat);
-            if (expireDate === 'Invalid date') {
-                res.json("Wrong date format!")
-                return
-            }
-
-            const task = new Tasks()
-            task.taskName = taskFromReq.taskName
-            task.taskDescription = taskFromReq.taskDescription
-            task.userId = userAssign.id
-            task.expireDate = expireDate;
-            task.taskStatus = taskFromReq.taskStatus;
-            task.createdTime = createdDate;
-            task.updatedTime = createdDate;
-
-            await taskRepository.insert(task)
-            res.json(task)
-            return
-        }
-        else {
-            res.json("Can't find your account")
         }
     }
     static removeTask = async (req: Request, res: Response) => {
         const taskRepository = getRepository(Tasks)
         const taskId = req.body.id
         const task = await taskRepository.findOne({ id: taskId });
-        if (task) {
+        if (task.taskStatus !== "COMPLEDTED") {
+            res.json("You can't remove completed task")
+            return
+        }
+        else if (task) {
             await taskRepository.remove(task)
             res.json(task)
         }
         else {
             res.json(`No task found with id of ${taskId}`)
+            return
         }
     }
 }

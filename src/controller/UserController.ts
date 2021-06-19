@@ -9,9 +9,6 @@ export class UserController {
         const users = await userRepository.find();
         res.json(users)
     }
-    // async one(req: Request, res: Response, next: NextFunction) {
-    //     return this.userRepository.findOne(req.params.id);
-    // }
 
     static createUser = async (req: Request, res: Response) => {
         const userRepository = getRepository(Users)
@@ -46,22 +43,8 @@ export class UserController {
                 process.env.jwtSecret,
                 { expiresIn: "1h" }
             );
-
             //Send the jwt in the response
-            res.send(token);
+            res.json(token);
         }
-    }
-    // async remove(req: Request, res: Response, next: NextFunction) {
-    //     let userToRemove = await this.userRepository.findOne(req.params.id);
-    //     await this.userRepository.remove(userToRemove);
-    // }
-
-    static removeAll = async (req: Request, res: Response) => {
-        const userRepository = getRepository(Users)
-        let usersToRemove = await userRepository.find();
-        usersToRemove.map(async user => {
-            await userRepository.remove(user);
-        })
-        res.json("User's data cleared")
     }
 }
