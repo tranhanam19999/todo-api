@@ -14,4 +14,7 @@ For example:
 ```
 3. Run `npm i` command
 4. Run `npm start` command
-5. About the documentation of API (which parameter is allowed to pass in, what will be the response of API) is documented in document.html
+5. About the documentation of API (which parameter is allowed to pass in, what will be the response of API) is documented in
+```
+https://entrance-test-todo.stoplight.io/docs/todo/reference/ToDo.yaml/paths/~1tasks~1add-to-do/post
+```
